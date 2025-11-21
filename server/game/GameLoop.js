@@ -2,7 +2,9 @@ import Player from '../entity/Player.js';
 import Polygon, { randomPolygonType } from '../entity/Polygon.js';
 
 const TICK_RATE = 50;
-const ARENA = { width: 2400, height: 2400 };
+const WORLD_WIDTH = 10000;
+const WORLD_HEIGHT = 10000;
+const ARENA = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const MIN_POLYGONS = 50;
 
 function randomId() {
@@ -11,13 +13,21 @@ function randomId() {
 
 function randomPosition() {
   return {
-    x: (Math.random() - 0.5) * (ARENA.width - 200),
-    y: (Math.random() - 0.5) * (ARENA.height - 200),
+    x: (Math.random() - 0.5) * (WORLD_WIDTH - 200),
+    y: (Math.random() - 0.5) * (WORLD_HEIGHT - 200),
   };
 }
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function clampToWorld(entity) {
+  const halfWidth = WORLD_WIDTH / 2;
+  const halfHeight = WORLD_HEIGHT / 2;
+  const radius = entity.radius || 0;
+  entity.x = clamp(entity.x, -halfWidth + radius, halfWidth - radius);
+  entity.y = clamp(entity.y, -halfHeight + radius, halfHeight - radius);
 }
 
 function circleIntersect(a, b) {
@@ -83,6 +93,7 @@ export default class GameLoop {
 
   spawnPolygon() {
     const polygon = new Polygon(randomId(), randomPolygonType(), randomPosition());
+    clampToWorld(polygon);
     this.polygons.push(polygon);
   }
 
@@ -106,8 +117,7 @@ export default class GameLoop {
   updatePlayers(delta, now) {
     for (const player of this.players.values()) {
       player.update(delta);
-      player.x = clamp(player.x, -ARENA.width / 2, ARENA.width / 2);
-      player.y = clamp(player.y, -ARENA.height / 2, ARENA.height / 2);
+      clampToWorld(player);
 
       const bullet = player.tryShoot(now);
       if (bullet) this.bullets.push(bullet);
