@@ -60,3 +60,13 @@ export function sendUpgrade(stat) {
     }),
   );
 }
+
+export function sendTankChoice(tankId) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  socket.send(
+    JSON.stringify({
+      type: 'chooseTank',
+      tankId,
+    }),
+  );
+}
