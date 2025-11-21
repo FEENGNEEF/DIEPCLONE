@@ -1,17 +1,17 @@
 export class ClientPlayer {
-  constructor() {
-    // TODO: represent player entity for rendering
+  constructor(data) {
+    Object.assign(this, data);
   }
 }
 
 export class ClientBullet {
-  constructor() {
-    // TODO: represent bullet entity for rendering
+  constructor(data) {
+    Object.assign(this, data);
   }
 }
 
 export class ClientPolygon {
-  constructor() {
-    // TODO: represent polygon entity for rendering
+  constructor(data) {
+    Object.assign(this, data);
   }
 }
