@@ -65,6 +65,11 @@ export default class Player {
       shooting: false,
     };
 
+    this.kills = 0;
+    this.deaths = 0;
+    this.dead = false;
+    this.respawnTimer = 0;
+
     this.recalculateDerivedStats(true);
   }
 
@@ -169,23 +174,10 @@ export default class Player {
     this.y = spawn.y;
     this.vx = 0;
     this.vy = 0;
-    this.level = 1;
-    this.xp = 0;
-    this.stats = {
-      bulletDamage: 0,
-      bulletSpeed: 0,
-      reload: 0,
-      movementSpeed: 0,
-      maxHealth: 0,
-      regen: 0,
-      penetration: 0,
-      bodyDamage: 0,
-    };
-    this.unspentPoints = 0;
-    this.tankId = DEFAULT_TANK_ID;
-    this.pendingTankChoices = [];
     this.flashUntil = 0;
-    this.recalculateDerivedStats(true);
+    this.dead = false;
+    this.respawnTimer = 0;
+    this.hp = this.maxHp;
   }
 
   applyUpgrade(stat) {
