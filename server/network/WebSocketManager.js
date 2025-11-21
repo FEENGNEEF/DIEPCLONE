@@ -24,6 +24,9 @@ export default class WebSocketManager {
             shooting: Boolean(message.shooting),
           });
         }
+        if (message.type === 'upgrade' && typeof message.stat === 'string') {
+          this.gameLoop.upgradePlayerStat(player.id, message.stat);
+        }
       } catch (err) {
         console.error('Failed to parse message', err);
       }

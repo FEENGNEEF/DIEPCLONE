@@ -50,3 +50,13 @@ export function getLatestState() {
 export function getPlayerId() {
   return playerId;
 }
+
+export function sendUpgrade(stat) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  socket.send(
+    JSON.stringify({
+      type: 'upgrade',
+      stat,
+    }),
+  );
+}

@@ -69,6 +69,12 @@ export default class GameLoop {
     player.setInput(input);
   }
 
+  upgradePlayerStat(id, stat) {
+    const player = this.players.get(id);
+    if (!player) return false;
+    return player.applyUpgrade(stat);
+  }
+
   fillPolygons() {
     while (this.polygons.length < MIN_POLYGONS) {
       this.spawnPolygon();
@@ -123,7 +129,11 @@ export default class GameLoop {
         const polygon = this.polygons[p];
         if (circleIntersect(bullet, polygon)) {
           polygon.hp -= bullet.damage;
-          this.bullets.splice(b, 1);
+          if (bullet.penetration > 0) {
+            bullet.penetration -= 1;
+          } else {
+            this.bullets.splice(b, 1);
+          }
           hit = true;
           if (polygon.hp <= 0) {
             this.polygons.splice(p, 1);
@@ -144,7 +154,11 @@ export default class GameLoop {
         if (player.id === bullet.ownerId) continue;
         if (circleIntersect(bullet, player)) {
           player.hp -= bullet.damage;
-          this.bullets.splice(b, 1);
+          if (bullet.penetration > 0) {
+            bullet.penetration -= 1;
+          } else {
+            this.bullets.splice(b, 1);
+          }
           if (player.hp <= 0) {
             player.respawn(randomPosition());
           }
@@ -168,6 +182,8 @@ export default class GameLoop {
         maxHp: player.maxHp,
         level: player.level,
         xp: player.xp,
+        stats: player.stats,
+        unspentPoints: player.unspentPoints,
         radius: player.radius,
       })),
       bullets: this.bullets.map((bullet) => ({
