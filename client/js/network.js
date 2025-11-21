@@ -58,6 +58,7 @@ function correctLocalState(serverState) {
       localPlayer.lastShot = serverPlayer.lastShot;
       localPlayer.flashUntil = serverPlayer.flashUntil;
       localPlayer.movementSpeed = serverPlayer.movementSpeed;
+      localPlayer.pendingTankChoices = serverPlayer.pendingTankChoices || [];
     } else {
       localState.players.push({ ...serverPlayer });
     }

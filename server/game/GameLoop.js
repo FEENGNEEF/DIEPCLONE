@@ -1,16 +1,18 @@
 import Player from '../entity/Player.js';
-import Polygon, { randomPolygonType } from '../entity/Polygon.js';
+import Polygon, { POLYGON_TYPES, randomPolygonType } from '../entity/Polygon.js';
 import { getTankById, getTanksByTier } from '../tanks/index.js';
 
 const TICK_RATE = 50;
 const WORLD_WIDTH = 10000;
 const WORLD_HEIGHT = 10000;
 const ARENA = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
-const MIN_POLYGONS = 50;
+const MIN_POLYGONS = 500;
 const FIRST_TANK_SELECTION_LEVEL = 15;
 const SECOND_TANK_SELECTION_LEVEL = 30;
 const RESPAWN_TIME_MS = 2000;
 const MAX_KILLFEED_ENTRIES = 20;
+const BOSS_SPAWN_INTERVAL_MS = { min: 30000, max: 60000 };
+const PLAYER_POLYGON_COLLISION_COOLDOWN_MS = 300;
 
 function randomId() {
   return Math.random().toString(36).slice(2, 10);
@@ -52,6 +54,7 @@ export default class GameLoop {
     this.lastTick = Date.now();
     this.interval = null;
     this.killfeed = [];
+    this.nextBossSpawnAt = this.lastTick + this.randomBossInterval();
     this.fillPolygons();
     this.start();
   }
@@ -92,8 +95,10 @@ export default class GameLoop {
   }
 
   fillPolygons() {
-    while (this.polygons.length < MIN_POLYGONS) {
-      this.spawnPolygon();
+    const regularPolygons = this.polygons.filter((polygon) => !polygon.isBoss);
+    while (regularPolygons.length < MIN_POLYGONS) {
+      const polygon = this.spawnPolygon();
+      regularPolygons.push(polygon);
     }
   }
 
@@ -101,6 +106,7 @@ export default class GameLoop {
     const polygon = new Polygon(randomId(), randomPolygonType(), randomPosition());
     clampToWorld(polygon);
     this.polygons.push(polygon);
+    return polygon;
   }
 
   tick() {
@@ -110,10 +116,12 @@ export default class GameLoop {
     this.lastTick = now;
 
     this.fillPolygons();
+    this.maybeSpawnBoss(now);
     this.updatePlayers(delta, deltaMs, now);
     this.updateBullets(deltaMs);
     this.handleBulletPolygonCollisions(now);
     this.handleBulletPlayerCollisions(now);
+    this.handlePlayerPolygonCollisions(now);
 
     if (this.network) {
       this.network.broadcastState(now);
@@ -194,32 +202,84 @@ export default class GameLoop {
             this.bullets.splice(b, 1);
           }
           if (player.hp <= 0) {
-            player.hp = 0;
-            player.dead = true;
-            player.respawnTimer = RESPAWN_TIME_MS;
-            player.deaths += 1;
-            player.vx = 0;
-            player.vy = 0;
-
-            const killer = this.players.get(bullet.ownerId);
-            if (killer) {
-              killer.kills += 1;
-            }
-
-            this.killfeed.push({
-              killerId: bullet.ownerId,
-              victimId: player.id,
-              time: now,
-            });
-
-            if (this.killfeed.length > MAX_KILLFEED_ENTRIES) {
-              this.killfeed.shift();
-            }
+            this.markPlayerDead(player, now, bullet.ownerId);
           }
           break;
         }
       }
     }
+  }
+
+  handlePlayerPolygonCollisions(now) {
+    for (const player of this.players.values()) {
+      if (player.dead) continue;
+
+      for (const polygon of this.polygons) {
+        if (!circleIntersect(player, polygon)) continue;
+
+        if (player.lastPolygonCollision && now - player.lastPolygonCollision < PLAYER_POLYGON_COLLISION_COOLDOWN_MS) {
+          continue;
+        }
+
+        player.lastPolygonCollision = now;
+        const speed = Math.hypot(player.vx, player.vy);
+        const collisionDamage = polygon.collisionDamage + speed * 0.03;
+        player.hp -= collisionDamage;
+        player.flashUntil = now + 120;
+
+        if (player.hp <= 0) {
+          this.markPlayerDead(player, now);
+        }
+        break;
+      }
+    }
+  }
+
+  markPlayerDead(player, now, killerId = null) {
+    player.hp = 0;
+    player.dead = true;
+    player.respawnTimer = RESPAWN_TIME_MS;
+    player.deaths += 1;
+    player.vx = 0;
+    player.vy = 0;
+
+    if (killerId) {
+      const killer = this.players.get(killerId);
+      if (killer) {
+        killer.kills += 1;
+      }
+
+      this.killfeed.push({
+        killerId,
+        victimId: player.id,
+        time: now,
+      });
+
+      if (this.killfeed.length > MAX_KILLFEED_ENTRIES) {
+        this.killfeed.shift();
+      }
+    }
+  }
+
+  spawnBossOctagon() {
+    const boss = new Polygon(randomId(), 'boss_octagon', { x: 0, y: 0 });
+    clampToWorld(boss);
+    this.polygons.push(boss);
+
+    const guardCount = 8;
+    const guardDistance = boss.radius + (POLYGON_TYPES.octagon.radius || 28) + 20;
+    for (let i = 0; i < guardCount; i += 1) {
+      const angle = (Math.PI * 2 * i) / guardCount;
+      const guardPos = { x: Math.cos(angle) * guardDistance, y: Math.sin(angle) * guardDistance };
+      const guard = new Polygon(randomId(), 'octagon', guardPos);
+      clampToWorld(guard);
+      this.polygons.push(guard);
+    }
+  }
+
+  randomBossInterval() {
+    const { min, max } = BOSS_SPAWN_INTERVAL_MS;
+    return min + Math.random() * (max - min);
   }
 
   handleTankUpgradeChoices(player, previousLevel) {
@@ -292,6 +352,8 @@ export default class GameLoop {
         x: polygon.x,
         y: polygon.y,
         radius: polygon.radius,
+        sides: polygon.sides,
+        isBoss: polygon.isBoss,
         flashUntil: polygon.flashUntil,
       })),
       killfeed: this.killfeed.slice(-5),

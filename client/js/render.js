@@ -13,6 +13,9 @@ const COLORS = {
   bullet: '#f87171',
   square: '#34d399',
   triangle: '#a78bfa',
+  pentagon: '#f97316',
+  octagon: '#c084fc',
+  boss_octagon: '#a855f7',
   gridLight: '#2f3b55',
   gridDark: '#0f172a',
 };
@@ -154,18 +157,31 @@ export function createRenderer(canvas) {
     const { x, y } = worldToScreen(poly.x, poly.y);
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = poly.type === 'square' ? COLORS.square : COLORS.triangle;
+
+    const color = COLORS[poly.type] || COLORS.square;
+    ctx.fillStyle = color;
     ctx.beginPath();
-    if (poly.type === 'square') {
-      const size = poly.radius * Math.SQRT1_2;
-      ctx.rect(-size, -size, size * 2, size * 2);
-    } else {
-      ctx.moveTo(0, -poly.radius);
-      ctx.lineTo(poly.radius, poly.radius);
-      ctx.lineTo(-poly.radius, poly.radius);
-      ctx.closePath();
+
+    const sides = Math.max(3, poly.sides || 4);
+    for (let i = 0; i < sides; i += 1) {
+      const angle = (i / sides) * Math.PI * 2 - Math.PI / 2;
+      const px = Math.cos(angle) * poly.radius;
+      const py = Math.sin(angle) * poly.radius;
+      if (i === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
     }
+    ctx.closePath();
     ctx.fill();
+
+    if (poly.isBoss) {
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.stroke();
+    }
+
     const flashActive = poly.flashUntil && now && now < poly.flashUntil;
     if (flashActive) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
