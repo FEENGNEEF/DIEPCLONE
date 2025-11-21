@@ -23,7 +23,10 @@ body {
 }
 
 #upgrade-panel {
-  position: relative;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 12;
   display: none;
   flex-direction: column;
   gap: 12px;
@@ -61,6 +64,12 @@ body {
   text-shadow: 1px 1px 2px #0b0f18;
   min-width: 140px;
   text-align: right;
+}
+
+#upgrade-panel[data-unspent]:not([data-unspent="0"]) #upgrade-indicator {
+  background: rgba(74, 222, 128, 0.2);
+  border-color: rgba(74, 222, 128, 0.8);
+  color: #4ade80;
 }
 
 .upgrade-panel__buttons {

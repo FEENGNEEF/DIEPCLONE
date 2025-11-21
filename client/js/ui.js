@@ -14,6 +14,7 @@ const STAT_BUTTONS = [
 export function setupUi() {
   const panel = document.createElement('aside');
   panel.id = 'upgrade-panel';
+  panel.setAttribute('aria-live', 'polite');
 
   const header = document.createElement('div');
   header.className = 'upgrade-panel__header';
@@ -53,17 +54,22 @@ export function setupUi() {
 
     indicator.textContent = `UPGRADES AVAILABLE: ${unspent}`;
 
-    if (player && player.level > 0) {
-      panel.style.display = 'flex';
-      STAT_BUTTONS.forEach((stat) => {
-        const value = player.stats?.[stat.key] ?? 0;
-        const button = buttons.get(stat.key);
-        button.textContent = `${stat.label} (${value})`;
-        button.disabled = unspent <= 0;
-      });
-    } else {
+    if (!player) {
       panel.style.display = 'none';
+      requestAnimationFrame(update);
+      return;
     }
+
+    panel.style.display = 'flex';
+    panel.dataset.level = player.level;
+    panel.dataset.unspent = unspent;
+
+    STAT_BUTTONS.forEach((stat) => {
+      const value = player.stats?.[stat.key] ?? 0;
+      const button = buttons.get(stat.key);
+      button.textContent = `${stat.label} (${value})`;
+      button.disabled = unspent <= 0;
+    });
 
     requestAnimationFrame(update);
   }
