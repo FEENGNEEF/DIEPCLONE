@@ -54,6 +54,7 @@ export default class GameLoop {
     this.lastTick = Date.now();
     this.interval = null;
     this.killfeed = [];
+    this.bossSpawned = false;
     this.nextBossSpawnAt = this.lastTick + this.randomBossInterval();
     this.fillPolygons();
     this.start();
@@ -280,6 +281,58 @@ export default class GameLoop {
   randomBossInterval() {
     const { min, max } = BOSS_SPAWN_INTERVAL_MS;
     return min + Math.random() * (max - min);
+  }
+
+  maybeSpawnBoss(now) {
+    if (this.bossSpawned || now < this.nextBossSpawnAt) return;
+
+    const BOSS_HEALTH = 2000;
+    const BOSS_XP = 2000;
+    const CENTER = { x: 0, y: 0 };
+
+    // Velký boss osmiúhelník uprostřed
+    this.polygons.push({
+      id: randomId(),
+      type: 'boss_octagon_custom',
+      sides: 8,
+      x: CENTER.x,
+      y: CENTER.y,
+      radius: 60,
+      hp: BOSS_HEALTH,
+      xpValue: BOSS_XP,
+      collisionDamage: 100,
+      maxHp: BOSS_HEALTH,
+      color: 'purple',
+      isBoss: true,
+      flashUntil: 0,
+    });
+
+    // Menší osmiúhelníky kolem něj
+    const miniCount = 8;
+    for (let i = 0; i < miniCount; i++) {
+      const angle = (i / miniCount) * 2 * Math.PI;
+      const radius = 120;
+      const x = CENTER.x + Math.cos(angle) * radius;
+      const y = CENTER.y + Math.sin(angle) * radius;
+
+      this.polygons.push({
+        id: randomId(),
+        type: 'octagon_minion',
+        sides: 8,
+        x,
+        y,
+        radius: 30,
+        hp: 300,
+        xpValue: 200,
+        collisionDamage: 40,
+        maxHp: 300,
+        color: 'purple',
+        isBoss: false,
+        flashUntil: 0,
+      });
+    }
+
+    this.bossSpawned = true;
   }
 
   handleTankUpgradeChoices(player, previousLevel) {
