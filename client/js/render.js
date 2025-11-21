@@ -1,5 +1,9 @@
 import { getLatestState, getPlayerId } from './network.js';
 import { updateCamera, worldToScreen } from './camera.js';
+import { renderMinimap } from './minimap.js';
+import { renderScoreboard } from './scoreboard.js';
+import { renderRespawnOverlay } from './respawn-ui.js';
+import { renderKillfeed } from './killfeed.js';
 
 const COLORS = {
   background: '#1f2937',
@@ -189,6 +193,13 @@ export function createRenderer(canvas) {
 
   function draw() {
     const state = getLatestState();
+    const localPlayer = state?.players?.find((p) => p.id === getPlayerId());
+
+    renderMinimap(state);
+    renderScoreboard(state);
+    renderKillfeed(state);
+    renderRespawnOverlay(localPlayer);
+
     ctx.fillStyle = COLORS.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -197,7 +208,6 @@ export function createRenderer(canvas) {
       return;
     }
 
-    const localPlayer = state.players.find((p) => p.id === getPlayerId());
     const camera = updateCamera(localPlayer || { x: 0, y: 0, vx: 0, vy: 0 });
     const currentTime = state.now;
 

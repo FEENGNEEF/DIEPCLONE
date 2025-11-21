@@ -104,3 +104,97 @@ body {
 #tank-choice-buttons button:hover {
   transform: translateY(-2px);
 }
+
+#minimap {
+  pointer-events: none;
+}
+
+#scoreboard {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid #1f2937;
+  padding: 12px;
+  border-radius: 8px;
+  color: #e5e7eb;
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 6;
+}
+
+#scoreboard h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #a5b4fc;
+}
+
+.scoreboard-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.scoreboard-row:last-child {
+  border-bottom: none;
+}
+
+.score-level {
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+.score-kills {
+  color: #c4c8d5;
+  text-align: center;
+}
+
+.score-class {
+  color: #34d399;
+  text-align: right;
+  font-weight: bold;
+}
+
+#respawn-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: #f8fafc;
+  font-size: 28px;
+  font-weight: bold;
+  z-index: 20;
+  text-align: center;
+  padding: 20px;
+}
+
+#respawn-message {
+  max-width: 480px;
+  line-height: 1.4;
+}
+
+#killfeed {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #e5e7eb;
+  z-index: 7;
+  font-size: 14px;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.killfeed-entry {
+  background: rgba(15, 23, 42, 0.8);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: opacity 0.3s ease;
+}
