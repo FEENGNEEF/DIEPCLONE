@@ -1,4 +1,5 @@
 import Bullet from './Bullet.js';
+import { DEFAULT_TANK_ID, getTankById } from '../tanks/index.js';
 
 const ACCELERATION = 900;
 const FRICTION = 0.85;
@@ -49,10 +50,13 @@ export default class Player {
     this.fireRate = BASE_FIRE_RATE;
     this.bulletDamage = BASE_BULLET_DAMAGE;
     this.bulletSpeed = BASE_BULLET_SPEED;
+    this.bulletSpread = 0;
     this.movementSpeed = BASE_MAX_SPEED;
     this.regenRate = BASE_REGEN;
     this.penetration = 0;
     this.bodyDamage = 0;
+    this.tankId = DEFAULT_TANK_ID;
+    this.pendingTankChoices = [];
     this.input = {
       moveX: 0,
       moveY: 0,
@@ -61,6 +65,11 @@ export default class Player {
     };
 
     this.recalculateDerivedStats(true);
+  }
+
+  setTank(tankId) {
+    this.tankId = getTankById(tankId)?.id || DEFAULT_TANK_ID;
+    this.recalculateDerivedStats();
   }
 
   setInput(input) {
@@ -102,24 +111,39 @@ export default class Player {
     if (!this.input.shooting) return null;
     if (now - this.lastShot < this.fireRate) return null;
 
+    const tank = getTankById(this.tankId);
+    const barrels = tank?.barrels?.length ? tank.barrels : [{ offsetX: 0, offsetY: 0, angleOffset: 0, bulletSpeedMul: 1, damageMul: 1 }];
+
     this.lastShot = now;
-    const speed = this.bulletSpeed;
-    const dirX = Math.cos(this.input.angle);
-    const dirY = Math.sin(this.input.angle);
-    return new Bullet({
-      ownerId: this.id,
-      x: this.x + dirX * this.radius,
-      y: this.y + dirY * this.radius,
-      vx: dirX * speed,
-      vy: dirY * speed,
-      damage: this.bulletDamage,
-      radius: 6,
-      ttl: 2000,
-      penetration: this.penetration,
+    const bullets = barrels.map((barrel) => {
+      const baseAngle = this.input.angle;
+      const spread = (Math.random() * 2 - 1) * this.bulletSpread;
+      const angle = baseAngle + (barrel.angleOffset || 0) + spread;
+      const dirX = Math.cos(angle);
+      const dirY = Math.sin(angle);
+
+      const rotatedX = (barrel.offsetX || 0) * Math.cos(baseAngle) - (barrel.offsetY || 0) * Math.sin(baseAngle);
+      const rotatedY = (barrel.offsetX || 0) * Math.sin(baseAngle) + (barrel.offsetY || 0) * Math.cos(baseAngle);
+
+      const speed = this.bulletSpeed * (barrel.bulletSpeedMul || 1);
+      return new Bullet({
+        ownerId: this.id,
+        x: this.x + rotatedX + dirX * this.radius,
+        y: this.y + rotatedY + dirY * this.radius,
+        vx: dirX * speed,
+        vy: dirY * speed,
+        damage: this.bulletDamage * (barrel.damageMul || 1),
+        radius: 6,
+        ttl: 2000,
+        penetration: this.penetration,
+      });
     });
+
+    return bullets;
   }
 
   addXp(amount) {
+    const previousLevel = this.level;
     this.xp += amount;
     while (this.xp >= this.xpToNextLevel()) {
       this.xp -= this.xpToNextLevel();
@@ -127,6 +151,7 @@ export default class Player {
       this.unspentPoints += 1;
       this.recalculateDerivedStats(true);
     }
+    return this.level - previousLevel;
   }
 
   xpToNextLevel() {
@@ -151,6 +176,8 @@ export default class Player {
       bodyDamage: 0,
     };
     this.unspentPoints = 0;
+    this.tankId = DEFAULT_TANK_ID;
+    this.pendingTankChoices = [];
     this.recalculateDerivedStats(true);
   }
 
@@ -171,6 +198,14 @@ export default class Player {
     this.fireRate = BASE_FIRE_RATE * Math.max(0.35, 1 - STAT_DEFINITIONS.reload.multiplier * this.stats.reload);
     this.bulletDamage = BASE_BULLET_DAMAGE * (1 + STAT_DEFINITIONS.bulletDamage.multiplier * this.stats.bulletDamage);
     this.bulletSpeed = BASE_BULLET_SPEED * (1 + STAT_DEFINITIONS.bulletSpeed.multiplier * this.stats.bulletSpeed);
+    const tank = getTankById(this.tankId);
+    const reloadMul = tank?.baseStatsMod?.reload ?? 1;
+    const bulletSpeedMul = tank?.baseStatsMod?.bulletSpeed ?? 1;
+    const damageMul = tank?.baseStatsMod?.damage ?? 1;
+    this.bulletSpread = tank?.baseStatsMod?.spread ?? 0;
+    this.fireRate *= reloadMul;
+    this.bulletDamage *= damageMul;
+    this.bulletSpeed *= bulletSpeedMul;
     this.movementSpeed = BASE_MAX_SPEED * (1 + STAT_DEFINITIONS.movementSpeed.multiplier * this.stats.movementSpeed);
     this.regenRate = BASE_REGEN * (1 + STAT_DEFINITIONS.regen.multiplier * this.stats.regen);
     this.penetration = (STAT_DEFINITIONS.penetration.step || 1) * this.stats.penetration;

@@ -27,6 +27,14 @@ export default class WebSocketManager {
         if (message.type === 'upgrade' && typeof message.stat === 'string') {
           this.gameLoop.upgradePlayerStat(player.id, message.stat);
         }
+        if (message.type === 'chooseTank' && typeof message.tankId === 'string') {
+          const tankChoices = player.pendingTankChoices || [];
+          const allowed = tankChoices.find((choice) => choice.id === message.tankId);
+          if (allowed) {
+            player.setTank(message.tankId);
+            player.pendingTankChoices = [];
+          }
+        }
       } catch (err) {
         console.error('Failed to parse message', err);
       }
@@ -38,12 +46,11 @@ export default class WebSocketManager {
     });
   }
 
-  broadcastState(state) {
-    const payload = JSON.stringify(state);
-    for (const ws of this.clients.keys()) {
-      if (ws.readyState === ws.OPEN) {
-        ws.send(payload);
-      }
+  broadcastState(now) {
+    for (const [ws, playerId] of this.clients.entries()) {
+      if (ws.readyState !== ws.OPEN) continue;
+      const state = this.gameLoop.serializeState(now, playerId);
+      ws.send(JSON.stringify(state));
     }
   }
 }

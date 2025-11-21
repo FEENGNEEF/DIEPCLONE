@@ -56,16 +56,27 @@ export function createRenderer(canvas) {
 
   function drawPlayer(player) {
     const { x, y } = worldToScreen(player.x, player.y);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(player.angle);
+
+    const barrelLength = player.radius * 1.7;
+    const barrelThickness = 8;
+    const barrelOffsets = player.tankId === 'twin' ? [-10, 10] : [0];
+
+    ctx.fillStyle = '#0f172a';
+    barrelOffsets.forEach((offsetY) => {
+      ctx.fillRect(0, -barrelThickness / 2 + offsetY, barrelLength, barrelThickness);
+    });
+
+    ctx.rotate(-player.angle);
+    ctx.translate(-x, -y);
+
     ctx.fillStyle = player.id === getPlayerId() ? COLORS.localPlayer : COLORS.player;
     ctx.beginPath();
     ctx.arc(x, y, player.radius, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.strokeStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + Math.cos(player.angle) * player.radius * 1.5, y + Math.sin(player.angle) * player.radius * 1.5);
-    ctx.stroke();
+    ctx.restore();
   }
 
   function drawPolygon(poly) {

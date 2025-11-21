@@ -1,11 +1,14 @@
 import Player from '../entity/Player.js';
 import Polygon, { randomPolygonType } from '../entity/Polygon.js';
+import { getTankById, getTanksByTier } from '../tanks/index.js';
 
 const TICK_RATE = 50;
 const WORLD_WIDTH = 10000;
 const WORLD_HEIGHT = 10000;
 const ARENA = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
 const MIN_POLYGONS = 50;
+const FIRST_TANK_SELECTION_LEVEL = 15;
+const SECOND_TANK_SELECTION_LEVEL = 30;
 
 function randomId() {
   return Math.random().toString(36).slice(2, 10);
@@ -110,7 +113,7 @@ export default class GameLoop {
     this.handleBulletPlayerCollisions();
 
     if (this.network) {
-      this.network.broadcastState(this.serializeState(now));
+      this.network.broadcastState(now);
     }
   }
 
@@ -119,8 +122,8 @@ export default class GameLoop {
       player.update(delta);
       clampToWorld(player);
 
-      const bullet = player.tryShoot(now);
-      if (bullet) this.bullets.push(bullet);
+      const bullets = player.tryShoot(now);
+      if (Array.isArray(bullets)) this.bullets.push(...bullets);
     }
   }
 
@@ -148,7 +151,13 @@ export default class GameLoop {
           if (polygon.hp <= 0) {
             this.polygons.splice(p, 1);
             const owner = this.players.get(bullet.ownerId);
-            if (owner) owner.addXp(polygon.xpValue);
+            if (owner) {
+              const previousLevel = owner.level;
+              const levelsGained = owner.addXp(polygon.xpValue);
+              if (levelsGained > 0) {
+                this.handleTankUpgradeChoices(owner, previousLevel);
+              }
+            }
           }
           break;
         }
@@ -178,24 +187,55 @@ export default class GameLoop {
     }
   }
 
-  serializeState(now) {
+  handleTankUpgradeChoices(player, previousLevel) {
+    if (!player || player.pendingTankChoices.length > 0) return;
+
+    const currentTank = getTankById(player.tankId);
+    const thresholds = [
+      { level: FIRST_TANK_SELECTION_LEVEL, tier: 1 },
+      { level: SECOND_TANK_SELECTION_LEVEL, tier: 2 },
+    ];
+
+    for (const threshold of thresholds) {
+      if (previousLevel < threshold.level && player.level >= threshold.level) {
+        if (threshold.tier > 1 && (currentTank?.tier ?? 1) >= threshold.tier) continue;
+
+        const choices = getTanksByTier(threshold.tier).filter((tank) => tank.id !== player.tankId);
+        if (choices.length > 0) {
+          player.pendingTankChoices = choices.map(({ id, name, tier }) => ({ id, name, tier }));
+          break;
+        }
+      }
+    }
+  }
+
+  serializeState(now, viewerId) {
     return {
       type: 'state',
       now,
       arena: ARENA,
-      players: Array.from(this.players.values()).map((player) => ({
-        id: player.id,
-        x: player.x,
-        y: player.y,
-        angle: player.angle,
-        hp: player.hp,
-        maxHp: player.maxHp,
-        level: player.level,
-        xp: player.xp,
-        stats: player.stats,
-        unspentPoints: player.unspentPoints,
-        radius: player.radius,
-      })),
+      players: Array.from(this.players.values()).map((player) => {
+        const serialized = {
+          id: player.id,
+          x: player.x,
+          y: player.y,
+          angle: player.angle,
+          hp: player.hp,
+          maxHp: player.maxHp,
+          level: player.level,
+          xp: player.xp,
+          stats: player.stats,
+          unspentPoints: player.unspentPoints,
+          radius: player.radius,
+          tankId: player.tankId,
+        };
+
+        if (viewerId === player.id && player.pendingTankChoices.length > 0) {
+          serialized.pendingTankChoices = player.pendingTankChoices;
+        }
+
+        return serialized;
+      }),
       bullets: this.bullets.map((bullet) => ({
         x: bullet.x,
         y: bullet.y,
