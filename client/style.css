@@ -11,31 +11,65 @@ body {
   overflow: hidden;
   background: radial-gradient(circle at top, #1e1e2f, #0b0b13);
   font-family: Arial, sans-serif;
+  display: flex;
+  height: 100vh;
 }
 
 #game-canvas {
   display: block;
-  width: 100vw;
+  flex: 1;
+  width: auto;
   height: 100vh;
 }
 
 #upgrade-panel {
-  position: fixed;
-  left: 20px;
-  bottom: 20px;
+  position: relative;
   display: none;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.95);
+  border-left: 1px solid #1f2937;
+  box-shadow: -6px 0 20px rgba(0, 0, 0, 0.35);
+  min-width: 280px;
+  max-width: 320px;
+  height: 100vh;
+  pointer-events: auto;
+}
+
+.upgrade-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.upgrade-panel__header h3 {
+  margin: 0;
+  color: #e5e7eb;
+  letter-spacing: 0.5px;
+  font-size: 16px;
+}
+
+#upgrade-indicator {
+  padding: 6px 10px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.6);
+  border-radius: 6px;
+  color: #fbbf24;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px #0b0f18;
+  min-width: 140px;
+  text-align: right;
+}
+
+.upgrade-panel__buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  padding: 12px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid #1f2937;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-  max-width: 400px;
 }
 
 #upgrade-panel button {
-  flex: 1 1 45%;
   padding: 10px 12px;
   background: linear-gradient(180deg, #3b82f6, #2563eb);
   border: none;
@@ -44,6 +78,7 @@ body {
   cursor: pointer;
   font-weight: bold;
   transition: transform 0.1s ease, opacity 0.2s ease;
+  width: 100%;
 }
 
 #upgrade-panel button:disabled {
@@ -53,15 +88,6 @@ body {
 
 #upgrade-panel button:not(:disabled):hover {
   transform: translateY(-2px);
-}
-
-#upgrade-indicator {
-  position: fixed;
-  top: 12px;
-  right: 16px;
-  color: #fbbf24;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px #0b0f18;
 }
 
 #tank-choice-overlay {

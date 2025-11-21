@@ -12,24 +12,39 @@ const STAT_BUTTONS = [
 ];
 
 export function setupUi() {
-  const panel = document.createElement('div');
+  const panel = document.createElement('aside');
   panel.id = 'upgrade-panel';
 
-  const buttons = new Map();
-  STAT_BUTTONS.forEach((stat) => {
-    const button = document.createElement('button');
-    button.textContent = stat.label;
-    button.addEventListener('click', () => sendUpgrade(stat.key));
-    panel.appendChild(button);
-    buttons.set(stat.key, button);
-  });
+  const header = document.createElement('div');
+  header.className = 'upgrade-panel__header';
+
+  const title = document.createElement('h3');
+  title.textContent = 'Upgrades';
 
   const indicator = document.createElement('div');
   indicator.id = 'upgrade-indicator';
   indicator.textContent = 'UPGRADES AVAILABLE: 0';
 
+  header.appendChild(title);
+  header.appendChild(indicator);
+
+  const buttons = new Map();
+  const buttonGrid = document.createElement('div');
+  buttonGrid.className = 'upgrade-panel__buttons';
+
+  STAT_BUTTONS.forEach((stat) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = stat.label;
+    button.addEventListener('click', () => sendUpgrade(stat.key));
+    buttonGrid.appendChild(button);
+    buttons.set(stat.key, button);
+  });
+
+  panel.appendChild(header);
+  panel.appendChild(buttonGrid);
+
   document.body.appendChild(panel);
-  document.body.appendChild(indicator);
 
   function update() {
     const state = getLatestState();
