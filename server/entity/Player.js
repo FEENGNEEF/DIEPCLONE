@@ -69,6 +69,7 @@ export default class Player {
     this.deaths = 0;
     this.dead = false;
     this.respawnTimer = 0;
+    this.lastPolygonCollision = 0;
 
     this.recalculateDerivedStats(true);
   }
@@ -178,6 +179,7 @@ export default class Player {
     this.dead = false;
     this.respawnTimer = 0;
     this.hp = this.maxHp;
+    this.lastPolygonCollision = 0;
   }
 
   applyUpgrade(stat) {
