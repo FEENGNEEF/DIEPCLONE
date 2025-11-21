@@ -11,8 +11,11 @@ export function updateCamera(localPlayer) {
     initialized = true;
   }
 
-  cameraX += (localPlayer.x - cameraX) * 0.1;
-  cameraY += (localPlayer.y - cameraY) * 0.1;
+  const speed = Math.hypot(localPlayer.vx || 0, localPlayer.vy || 0);
+  const factor = 0.08 + Math.min(speed / 20, 0.05);
+
+  cameraX += (localPlayer.x - cameraX) * factor;
+  cameraY += (localPlayer.y - cameraY) * factor;
 
   return { x: cameraX, y: cameraY };
 }

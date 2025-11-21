@@ -13,6 +13,7 @@ export default class Polygon {
     this.hp = config.hp;
     this.xpValue = config.xpValue;
     this.radius = config.radius;
+    this.flashUntil = 0;
   }
 }
 
