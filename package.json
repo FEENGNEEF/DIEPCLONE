@@ -4,9 +4,12 @@
   "description": "Simple diep.io clone for learning purposes",
   "type": "module",
   "scripts": {
-    "dev": "node server/index.js"
+    "dev": "node server/index.js",
+    "dev:server": "node server/index.js",
+    "dev:client": "cd client && npm install && npm run dev"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "ws": "^8.17.1"
   }
 }
