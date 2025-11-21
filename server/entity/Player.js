@@ -2,7 +2,7 @@ import Bullet from './Bullet.js';
 import { DEFAULT_TANK_ID, getTankById } from '../tanks/index.js';
 
 const ACCELERATION = 900;
-const FRICTION = 0.85;
+const FRICTION = 0.92;
 const BASE_MAX_SPEED = 280;
 const BASE_FIRE_RATE = 250;
 const PLAYER_RADIUS = 20;
@@ -31,6 +31,7 @@ export default class Player {
     this.vy = 0;
     this.angle = 0;
     this.radius = PLAYER_RADIUS;
+    this.flashUntil = 0;
     this.level = 1;
     this.xp = 0;
     this.stats = {
@@ -113,10 +114,10 @@ export default class Player {
 
     const tank = getTankById(this.tankId);
     const barrels = tank?.barrels?.length ? tank.barrels : [{ offsetX: 0, offsetY: 0, angleOffset: 0, bulletSpeedMul: 1, damageMul: 1 }];
+    const baseAngle = this.input.angle;
 
     this.lastShot = now;
     const bullets = barrels.map((barrel) => {
-      const baseAngle = this.input.angle;
       const spread = (Math.random() * 2 - 1) * this.bulletSpread;
       const angle = baseAngle + (barrel.angleOffset || 0) + spread;
       const dirX = Math.cos(angle);
@@ -138,6 +139,11 @@ export default class Player {
         penetration: this.penetration,
       });
     });
+
+    const recoilFactor = tank?.baseStatsMod?.recoil ?? 1;
+    const recoilStrength = 0.5 * recoilFactor;
+    this.vx -= Math.cos(baseAngle) * recoilStrength;
+    this.vy -= Math.sin(baseAngle) * recoilStrength;
 
     return bullets;
   }
@@ -178,6 +184,7 @@ export default class Player {
     this.unspentPoints = 0;
     this.tankId = DEFAULT_TANK_ID;
     this.pendingTankChoices = [];
+    this.flashUntil = 0;
     this.recalculateDerivedStats(true);
   }
 

@@ -109,8 +109,8 @@ export default class GameLoop {
     this.fillPolygons();
     this.updatePlayers(delta, now);
     this.updateBullets(deltaMs);
-    this.handleBulletPolygonCollisions();
-    this.handleBulletPlayerCollisions();
+    this.handleBulletPolygonCollisions(now);
+    this.handleBulletPlayerCollisions(now);
 
     if (this.network) {
       this.network.broadcastState(now);
@@ -134,7 +134,7 @@ export default class GameLoop {
     this.bullets = this.bullets.filter((bullet) => bullet.ttl > 0);
   }
 
-  handleBulletPolygonCollisions() {
+  handleBulletPolygonCollisions(now) {
     for (let b = this.bullets.length - 1; b >= 0; b -= 1) {
       const bullet = this.bullets[b];
       let hit = false;
@@ -142,6 +142,7 @@ export default class GameLoop {
         const polygon = this.polygons[p];
         if (circleIntersect(bullet, polygon)) {
           polygon.hp -= bullet.damage;
+          polygon.flashUntil = now + 100;
           if (bullet.penetration > 0) {
             bullet.penetration -= 1;
           } else {
@@ -166,13 +167,14 @@ export default class GameLoop {
     }
   }
 
-  handleBulletPlayerCollisions() {
+  handleBulletPlayerCollisions(now) {
     for (let b = this.bullets.length - 1; b >= 0; b -= 1) {
       const bullet = this.bullets[b];
       for (const player of this.players.values()) {
         if (player.id === bullet.ownerId) continue;
         if (circleIntersect(bullet, player)) {
           player.hp -= bullet.damage;
+          player.flashUntil = now + 100;
           if (bullet.penetration > 0) {
             bullet.penetration -= 1;
           } else {
@@ -224,10 +226,15 @@ export default class GameLoop {
           maxHp: player.maxHp,
           level: player.level,
           xp: player.xp,
+          vx: player.vx,
+          vy: player.vy,
+          movementSpeed: player.movementSpeed,
           stats: player.stats,
           unspentPoints: player.unspentPoints,
           radius: player.radius,
           tankId: player.tankId,
+          lastShot: player.lastShot,
+          flashUntil: player.flashUntil,
         };
 
         if (viewerId === player.id && player.pendingTankChoices.length > 0) {
@@ -247,6 +254,7 @@ export default class GameLoop {
         x: polygon.x,
         y: polygon.y,
         radius: polygon.radius,
+        flashUntil: polygon.flashUntil,
       })),
     };
   }

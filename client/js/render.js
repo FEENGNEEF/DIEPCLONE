@@ -9,13 +9,16 @@ const COLORS = {
   bullet: '#f87171',
   square: '#34d399',
   triangle: '#a78bfa',
-  grid: '#4b5563',
+  gridLight: '#2f3b55',
+  gridDark: '#0f172a',
 };
 
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
   ctx.lineWidth = 1;
   ctx.imageSmoothingEnabled = false;
+
+  const renderPositions = new Map();
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -26,17 +29,17 @@ export function createRenderer(canvas) {
   window.addEventListener('resize', resize);
 
   function drawGrid(camera) {
-    const gridSize = 100;
+    const lightGridSize = 50;
+    const darkGridSize = 250;
     const left = camera.x - canvas.width / 2;
     const right = camera.x + canvas.width / 2;
     const top = camera.y - canvas.height / 2;
     const bottom = camera.y + canvas.height / 2;
 
-    ctx.strokeStyle = COLORS.grid;
+    const startLightX = Math.floor(left / lightGridSize) * lightGridSize;
+    ctx.strokeStyle = COLORS.gridLight;
     ctx.lineWidth = 1;
-
-    const startX = Math.floor(left / gridSize) * gridSize;
-    for (let x = startX; x <= right; x += gridSize) {
+    for (let x = startLightX; x <= right; x += lightGridSize) {
       const screenX = worldToScreen(x, 0).x;
       ctx.beginPath();
       ctx.moveTo(screenX, 0);
@@ -44,8 +47,27 @@ export function createRenderer(canvas) {
       ctx.stroke();
     }
 
-    const startY = Math.floor(top / gridSize) * gridSize;
-    for (let y = startY; y <= bottom; y += gridSize) {
+    const startLightY = Math.floor(top / lightGridSize) * lightGridSize;
+    for (let y = startLightY; y <= bottom; y += lightGridSize) {
+      const screenY = worldToScreen(0, y).y;
+      ctx.beginPath();
+      ctx.moveTo(0, screenY);
+      ctx.lineTo(canvas.width, screenY);
+      ctx.stroke();
+    }
+
+    const startDarkX = Math.floor(left / darkGridSize) * darkGridSize;
+    ctx.strokeStyle = COLORS.gridDark;
+    for (let x = startDarkX; x <= right; x += darkGridSize) {
+      const screenX = worldToScreen(x, 0).x;
+      ctx.beginPath();
+      ctx.moveTo(screenX, 0);
+      ctx.lineTo(screenX, canvas.height);
+      ctx.stroke();
+    }
+
+    const startDarkY = Math.floor(top / darkGridSize) * darkGridSize;
+    for (let y = startDarkY; y <= bottom; y += darkGridSize) {
       const screenY = worldToScreen(0, y).y;
       ctx.beginPath();
       ctx.moveTo(0, screenY);
@@ -54,8 +76,22 @@ export function createRenderer(canvas) {
     }
   }
 
-  function drawPlayer(player) {
-    const { x, y } = worldToScreen(player.x, player.y);
+  function getRenderPosition(player) {
+    const previous = renderPositions.get(player.id) || { x: player.x, y: player.y };
+    if (player.id === getPlayerId()) {
+      renderPositions.set(player.id, { x: player.x, y: player.y });
+      return { x: player.x, y: player.y };
+    }
+
+    const lerpFactor = 0.2;
+    const x = previous.x + (player.x - previous.x) * lerpFactor;
+    const y = previous.y + (player.y - previous.y) * lerpFactor;
+    renderPositions.set(player.id, { x, y });
+    return { x, y };
+  }
+
+  function drawPlayer(player, renderPos, now) {
+    const { x, y } = worldToScreen(renderPos.x, renderPos.y);
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(player.angle);
@@ -69,6 +105,18 @@ export function createRenderer(canvas) {
       ctx.fillRect(0, -barrelThickness / 2 + offsetY, barrelLength, barrelThickness);
     });
 
+    const muzzleDuration = 50;
+    const timeSinceShot = now && player.lastShot ? now - player.lastShot : Number.POSITIVE_INFINITY;
+    if (timeSinceShot < muzzleDuration) {
+      const alpha = 1 - timeSinceShot / muzzleDuration;
+      ctx.fillStyle = `rgba(255, 255, 200, ${alpha})`;
+      barrelOffsets.forEach((offsetY) => {
+        ctx.beginPath();
+        ctx.arc(barrelLength, offsetY, 8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
     ctx.rotate(-player.angle);
     ctx.translate(-x, -y);
 
@@ -76,10 +124,29 @@ export function createRenderer(canvas) {
     ctx.beginPath();
     ctx.arc(x, y, player.radius, 0, Math.PI * 2);
     ctx.fill();
+
+    const flashActive = player.flashUntil && now && now < player.flashUntil;
+    if (flashActive) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.beginPath();
+      ctx.arc(x, y, player.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const barWidth = player.radius * 2;
+    const barHeight = 6;
+    const barX = x - barWidth / 2;
+    const barY = y + player.radius + 8;
+    const hpRatio = Math.max(0, Math.min(1, player.hp / (player.maxHp || 1)));
+    ctx.fillStyle = '#7f1d1d';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(barX, barY, barWidth * hpRatio, barHeight);
+
     ctx.restore();
   }
 
-  function drawPolygon(poly) {
+  function drawPolygon(poly, now) {
     const { x, y } = worldToScreen(poly.x, poly.y);
     ctx.save();
     ctx.translate(x, y);
@@ -95,6 +162,11 @@ export function createRenderer(canvas) {
       ctx.closePath();
     }
     ctx.fill();
+    const flashActive = poly.flashUntil && now && now < poly.flashUntil;
+    if (flashActive) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -126,7 +198,15 @@ export function createRenderer(canvas) {
     }
 
     const localPlayer = state.players.find((p) => p.id === getPlayerId());
-    const camera = updateCamera(localPlayer || { x: 0, y: 0 });
+    const camera = updateCamera(localPlayer || { x: 0, y: 0, vx: 0, vy: 0 });
+    const currentTime = state.now;
+
+    const playerIds = new Set(state.players.map((p) => p.id));
+    for (const id of renderPositions.keys()) {
+      if (!playerIds.has(id)) {
+        renderPositions.delete(id);
+      }
+    }
 
     drawGrid(camera);
 
@@ -137,9 +217,12 @@ export function createRenderer(canvas) {
     ctx.strokeRect(arenaTopLeft.x, arenaTopLeft.y, state.arena.width, state.arena.height);
     ctx.restore();
 
-    state.polygons.forEach((poly) => drawPolygon(poly));
+    state.polygons.forEach((poly) => drawPolygon(poly, currentTime));
     state.bullets.forEach((bullet) => drawBullet(bullet));
-    state.players.forEach((player) => drawPlayer(player));
+    state.players.forEach((player) => {
+      const renderPos = getRenderPosition(player);
+      drawPlayer(player, renderPos, currentTime);
+    });
 
     drawUi(localPlayer);
     requestAnimationFrame(draw);

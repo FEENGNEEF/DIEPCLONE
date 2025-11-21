@@ -1,3 +1,5 @@
+import { applyLocalInput } from './network.js';
+
 const inputState = {
   moveX: 0,
   moveY: 0,
@@ -15,6 +17,16 @@ function updateMovement() {
 
   inputState.moveX = (right ? 1 : 0) - (left ? 1 : 0);
   inputState.moveY = (down ? 1 : 0) - (up ? 1 : 0);
+}
+
+let lastLocalUpdate = performance.now();
+
+function tickLocalPrediction() {
+  const now = performance.now();
+  const delta = (now - lastLocalUpdate) / 1000;
+  lastLocalUpdate = now;
+  applyLocalInput(inputState, delta);
+  requestAnimationFrame(tickLocalPrediction);
 }
 
 export function setupInput(canvas) {
@@ -41,6 +53,9 @@ export function setupInput(canvas) {
   window.addEventListener('mouseup', () => {
     inputState.shooting = false;
   });
+
+  lastLocalUpdate = performance.now();
+  requestAnimationFrame(tickLocalPrediction);
 }
 
 export function getInputState() {
